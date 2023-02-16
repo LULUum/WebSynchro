@@ -1,0 +1,50 @@
+namespace PowerTools;
+
+use \Symfony\Component\CssSelector\CssSelector as CssSelector;
+
+class DOM_Document extends \DOMDocument {
+    public function __construct($data = false, $doctype = 'html', $encoding = 'UTF-8', $version = '1.0') {
+        parent::__construct($version, $encoding);
+        if ($doctype && $doctype === 'html') {
+            @$this->loadHTML($data);
+        } else {
+            @$this->loadXML($data);
+        }
+    }
+
+    public function querySelectorAll($selector, $contextnode = null) {
+        if (isset($this->doctype->name) && $this->doctype->name == 'html') {
+            CssSelector::enableHtmlExtension();
+        } else {
+            CssSelector::disableHtmlExtension();
+        }
+        $xpath = new \DOMXpath($this);
+        return $xpath->query(CssSelector::toXPath($selector, 'descendant::'), $contextnode);
+    }
+
+    [...]
+
+    public function loadHTMLFile($filename, $options = 0) {
+        $this->loadHTML(file_get_contents($filename), $options);
+    }
+
+    public function loadHTML($source, $options = 0) {
+        if ($source && $source != '') {
+            $data = trim($source);
+            $html5 = new HTML5(array('targetDocument' => $this, 'disableHtmlNsInDom' => true));
+            $data_start = mb_substr($data, 0, 10);
+            if (strpos($data_start, '<!DOCTYPE ') === 0 || strpos($data_start, '<html>') === 0) {
+                $html5->loadHTML($data);
+            } else {
+                @$this->loadHTML('<!DOCTYPE html><html><head><meta charset="' . $encoding . '" /></head><body></body></html>');
+                $t = $html5->loadHTMLFragment($data);
+                $docbody = $this->getElementsByTagName('body')->item(0);
+                while ($t->hasChildNodes()) {
+                    $docbody->appendChild($t->firstChild);
+                }
+            }
+        }
+    }
+
+    [...]
+}
